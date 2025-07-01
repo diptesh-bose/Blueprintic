@@ -60,7 +60,7 @@ azure-infrastructure-designer/
 
 1. **Navigate to the project directory:**
    ```powershell
-   cd "e:\GenAI Low Code App for Azure Infrastructure Design"
+   cd "e:\BLUEPRINTIC"
    ```
 
 2. **Install dependencies:**
