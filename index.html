@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blueprintic</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        header {
+            background-color: #0078D4;
+            color: white;
+            padding: 1rem;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 300px;
+            background-color: #f5f5f5;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .canvas {
+            flex: 1;
+            background-color: #fafafa;
+            position: relative;
+            overflow: hidden;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1rem;
+        }
+        .panel h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            font-family: inherit;
+        }
+        button {
+            background-color: #0078D4;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #106EBE;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .component-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        .component {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0.5rem;
+            text-align: center;
+            background-color: #f9f9f9;
+            cursor: pointer;
+        }
+        .component:hover {
+            background-color: #f0f0f0;
+        }
+        .component-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+        .azure-node {
+            position: absolute;
+            width: 180px;
+            padding: 0.75rem;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            cursor: move;
+            user-select: none;
+            z-index: 10; /* Ensure nodes are above connections */
+        }
+        /* Added new node types */
+        .azure-node-compute {
+            border-left: 4px solid #0078D4; /* Blue */
+        }
+        .azure-node-storage {
+            border-left: 4px solid #FFB900; /* Yellow */
+        }
+        .azure-node-database {
+            border-left: 4px solid #7FBA00; /* Green */
+        }
+        .azure-node-networking {
+            border-left: 4px solid #00BCF2; /* Light Blue */
+        }
+        .azure-node-security {
+            border-left: 4px solid #F25022; /* Orange */
+        }
+        .azure-node-integration {
+            border-left: 4px solid #5C2D91; /* Purple */
+        }
+        .azure-node-serverless {
+            border-left: 4px solid #FF8C00; /* Dark Orange */
+        }
+        .azure-node-cache {
+            border-left: 4px solid #E81123; /* Red */
+        }
+        .azure-node-api {
+            border-left: 4px solid #777777; /* Gray */
+        }
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .node-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+        .node-title {
+            font-weight: bold;
+        }
+        .node-type {
+            font-size: 0.75rem;
+            color: #666;
+        }
+        .node-properties {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .property-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.25rem;
+        }
+        .property-name {
+            color: #666;
+        }
+        /* SVG connection styles */
+        .connections-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .connection-path {
+            fill: none;
+            stroke: #666;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            marker-end: url(#arrowhead);
+        }
+        .export-option {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Code editor styles */
+        .code-editor {
+            width: 100%;
+            height: 300px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f8f8f8;
+            overflow: auto;
+            white-space: pre;
+            tab-size: 2;
+            -moz-tab-size: 2;
+            resize: vertical;
+        }
+        
+        /* Tab styles for output panel */
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 4px;
+        }
+        
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Button group styles */
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .button-group button {
+            flex: 1;
+        }
+        
+        /* Azure connection panel */
+        .azure-connection {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .azure-connection-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .form-group label {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Blueprintic</h1>
+        </header>
+        <div class="content">
+            <div class="sidebar">
+                <div class="panel">
+                    <h2>Describe Your Infrastructure</h2>
+                    <p>From envisioning and drawing architecture to generating infrastructure as code.</p>
+                    <textarea id="prompt-input" placeholder="Describe the infrastructure you need in natural language. e.g., 'I need a web app with a SQL database, storage for user uploads, and authentication...'"></textarea>
+                    <button id="generate-btn">Generate Infrastructure</button>
+                </div>
+                
+                <div id="export-panel" class="panel" style="display: none;">
+                    <h2>Export Options</h2>
+                    <div class="tab-container">
+                        <div class="tab active" data-tab="arm">ARM Template</div>
+                        <div class="tab" data-tab="terraform">Terraform</div>
+                        <div class="tab" data-tab="bicep">Bicep</div>
+                    </div>
+                    
+                    <div class="tab-content active" id="arm-content">
+                        <textarea class="code-editor" id="arm-editor" spellcheck="false"></textarea>
+                        <div class="button-group">
+                            <button id="download-arm">Download</button>
+                            <button id="deploy-arm">Deploy to Azure</button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="terraform-content">
+                        <textarea class="code-editor" id="terraform-editor" spellcheck="false"></textarea>
+                        <div class="button-group">
+                            <button id="download-terraform">Download</button>
+                            <button id="deploy-terraform">Deploy to Azure</button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="bicep-content">
+                        <textarea class="code-editor" id="bicep-editor" spellcheck="false"></textarea>
+                        <div class="button-group">
+                            <button id="download-bicep">Download</button>
+                            <button id="deploy-bicep">Deploy to Azure</button>
+                        </div>
+                    </div>
+                    
+                    <div class="azure-connection" id="azure-connection-panel" style="display: none;">
+                        <h3>Connect to Azure</h3>
+                        <div class="azure-connection-form">
+                            <div class="form-group">
+                                <label for="subscription-id">Subscription ID</label>
+                                <input type="text" id="subscription-id" placeholder="Enter your Azure Subscription ID">
+                            </div>
+                            <div class="form-group">
+                                <label for="tenant-id">Tenant ID</label>
+                                <input type="text" id="tenant-id" placeholder="Enter your Azure Tenant ID">
+                            </div>
+                            <div class="form-group">
+                                <label for="resource-group">Resource Group</label>
+                                <input type="text" id="resource-group" placeholder="Enter target Resource Group name">
+                            </div>
+                            <button id="connect-azure">Connect & Deploy</button>
+                            <button id="cancel-azure" style="background-color: #d9534f; margin-top: 5px;">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h2>Azure Components</h2>
+                    <p>Click on components to add them to the canvas</p>
+                    <div class="component-grid">
+                        <div class="component" onclick="addComponent('App Service', 'compute', '🌐')">
+                            <div class="component-icon">🌐</div>
+                            <div>App Service</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Virtual Machine', 'compute', '🖥️')">
+                            <div class="component-icon">🖥️</div>
+                            <div>VM</div>
+                        </div>
+                        <div class="component" onclick="addComponent('AKS Cluster', 'compute', '🚢')">
+                            <div class="component-icon">🚢</div>
+                            <div>AKS</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Azure Functions', 'serverless', '⚡')">
+                            <div class="component-icon">⚡</div>
+                            <div>Functions</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Logic Apps', 'integration', '🔄')">
+                            <div class="component-icon">🔄</div>
+                            <div>Logic Apps</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Storage Account', 'storage', '💾')">
+                            <div class="component-icon">💾</div>
+                            <div>Storage</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Azure SQL', 'database', '🗄️')">
+                            <div class="component-icon">🗄️</div>
+                            <div>SQL DB</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Cosmos DB', 'database', '🌌')">
+                            <div class="component-icon">🌌</div>
+                            <div>Cosmos DB</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Redis Cache', 'cache', '🔥')">
+                            <div class="component-icon">🔥</div>
+                            <div>Redis Cache</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Virtual Network', 'networking', '🔌')">
+                            <div class="component-icon">🔌</div>
+                            <div>VNet</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Load Balancer', 'networking', '⚖️')">
+                            <div class="component-icon">⚖️</div>
+                            <div>Load Balancer</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Application Gateway', 'networking', '🚦')">
+                            <div class="component-icon">🚦</div>
+                            <div>App Gateway</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Azure AD B2C', 'security', '🔒')">
+                            <div class="component-icon">🔒</div>
+                            <div>AD B2C</div>
+                        </div>
+                        <div class="component" onclick="addComponent('Key Vault', 'security', '🔑')">
+                            <div class="component-icon">🔑</div>
+                            <div>Key Vault</div>
+                        </div>
+                        <div class="component" onclick="addComponent('API Management', 'api', '⚙️')">
+                            <div class="component-icon">⚙️</div>
+                            <div>API Mgmt</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="canvas" class="canvas">
+                <!-- SVG container for connections -->
+                <svg class="connections-container" id="connections-svg">
+                    <!-- Arrow marker definition -->
+                    <defs>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                            refX="9" refY="3.5" orient="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+                        </marker>
+                    </defs>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Expanded Azure service mappings
+        const azureServiceMappings = {
+            'web application': { type: 'compute', label: 'App Service', icon: '🌐', properties: { tier: 'Standard', size: 'S1', region: 'East US' } },
+            'app service': { type: 'compute', label: 'App Service', icon: '🌐', properties: { tier: 'Standard', size: 'S1', region: 'East US' } },
+            'sql database': { type: 'database', label: 'Azure SQL', icon: '🗄️', properties: { tier: 'Standard', size: 'S0', region: 'East US' } },
+            'azure sql': { type: 'database', label: 'Azure SQL', icon: '🗄️', properties: { tier: 'Standard', size: 'S0', region: 'East US' } },
+            'storage': { type: 'storage', label: 'Storage Account', icon: '💾', properties: { type: 'Standard_LRS', accessTier: 'Hot', region: 'East US' } },
+            'storage account': { type: 'storage', label: 'Storage Account', icon: '💾', properties: { type: 'Standard_LRS', accessTier: 'Hot', region: 'East US' } },
+            'authentication': { type: 'security', label: 'Azure AD B2C', icon: '🔒', properties: { tier: 'Standard', region: 'Global' } },
+            'azure ad b2c': { type: 'security', label: 'Azure AD B2C', icon: '🔒', properties: { tier: 'Standard', region: 'Global' } },
+            'virtual machine': { type: 'compute', label: 'Virtual Machine', icon: '🖥️', properties: { size: 'Standard_D2s_v3', os: 'Windows Server 2022', region: 'East US' } },
+            'vm': { type: 'compute', label: 'Virtual Machine', icon: '🖥️', properties: { size: 'Standard_D2s_v3', os: 'Windows Server 2022', region: 'East US' } },
+            'kubernetes': { type: 'compute', label: 'AKS Cluster', icon: '🚢', properties: { nodeSize: 'Standard_D2s_v3', nodeCount: '3', region: 'East US' } },
+            'aks': { type: 'compute', label: 'AKS Cluster', icon: '🚢', properties: { nodeSize: 'Standard_D2s_v3', nodeCount: '3', region: 'East US' } },
+            'network': { type: 'networking', label: 'Virtual Network', icon: '🔌', properties: { addressSpace: '10.0.0.0/16', region: 'East US' } },
+            'vnet': { type: 'networking', label: 'Virtual Network', icon: '🔌', properties: { addressSpace: '10.0.0.0/16', region: 'East US' } },
+            'functions': { type: 'serverless', label: 'Azure Functions', icon: '⚡', properties: { plan: 'Consumption', region: 'East US' } },
+            'azure functions': { type: 'serverless', label: 'Azure Functions', icon: '⚡', properties: { plan: 'Consumption', region: 'East US' } },
+            'logic app': { type: 'integration', label: 'Logic Apps', icon: '🔄', properties: { plan: 'Consumption', region: 'East US' } },
+            'logic apps': { type: 'integration', label: 'Logic Apps', icon: '🔄', properties: { plan: 'Consumption', region: 'East US' } },
+            'cosmos db': { type: 'database', label: 'Cosmos DB', icon: '🌌', properties: { api: 'SQL', throughput: '400 RU/s', region: 'East US' } },
+            'redis cache': { type: 'cache', label: 'Redis Cache', icon: '🔥', properties: { tier: 'Basic', size: 'C0', region: 'East US' } },
+            'key vault': { type: 'security', label: 'Key Vault', icon: '🔑', properties: { tier: 'Standard', region: 'East US' } },
+            'load balancer': { type: 'networking', label: 'Load Balancer', icon: '⚖️', properties: { tier: 'Standard', region: 'East US' } },
+            'application gateway': { type: 'networking', label: 'Application Gateway', icon: '🚦', properties: { tier: 'Standard_v2', region: 'East US' } },
+            'api management': { type: 'api', label: 'API Management', icon: '⚙️', properties: { tier: 'Consumption', region: 'East US' } },
+            'apim': { type: 'api', label: 'API Management', icon: '⚙️', properties: { tier: 'Consumption', region: 'East US' } }
+        };
+
+        let nodes = [];
+        let connections = [];
+        let nextNodeId = 1;
+        let isDragging = false;
+        let currentDragNode = null;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        // Process the prompt and generate infrastructure
+        function processPrompt(prompt) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const lowerPrompt = prompt.toLowerCase();
+                    const newNodes = [];
+                    const newConnections = [];
+                    const addedServices = new Set(); // Track added services to avoid duplicates
+                    let nodeIndex = 0;
+
+                    // Check for keywords in the prompt
+                    Object.entries(azureServiceMappings).forEach(([keyword, service]) => {
+                        if (lowerPrompt.includes(keyword) && !addedServices.has(service.label)) {
+                            const nodeId = nextNodeId++;
+                            const node = {
+                                id: nodeId,
+                                type: service.type,
+                                label: service.label,
+                                icon: service.icon,
+                                properties: service.properties,
+                                x: 100 + nodeIndex * 220,
+                                y: 100 + (nodeIndex % 2) * 150
+                            };
+                            newNodes.push(node);
+                            addedServices.add(service.label);
+                            
+                            // Create connections between components if there are multiple
+                            if (nodeIndex > 0) {
+                                const prevNodeId = newNodes[nodeIndex - 1].id;
+                                newConnections.push({
+                                    source: prevNodeId,
+                                    target: nodeId
+                                });
+                            }
+                            nodeIndex++;
+                        }
+                    });
+                    
+                    // Generate template code based on the nodes
+                    generateTemplateCode(newNodes, newConnections);
+                    
+                    resolve({ nodes: newNodes, connections: newConnections });
+                }, 1000);
+            });
+        }
+
+        // Generate template code for ARM, Terraform, and Bicep
+        function generateTemplateCode(nodes, connections) {
+            // Generate ARM Template
+            const armTemplate = generateARMTemplate(nodes, connections);
+            document.getElementById('arm-editor').value = armTemplate;
+            
+            // Generate Terraform Template
+            const terraformTemplate = generateTerraformTemplate(nodes, connections);
+            document.getElementById('terraform-editor').value = terraformTemplate;
+            
+            // Generate Bicep Template
+            const bicepTemplate = generateBicepTemplate(nodes, connections);
+            document.getElementById('bicep-editor').value = bicepTemplate;
+        }
+
+        // Generate ARM Template
+        function generateARMTemplate(nodes, connections) {
+            let resources = [];
+            
+            nodes.forEach(node => {
+                let resource = {};
+                
+                switch(node.label) {
+                    case 'App Service':
+                        resource = {
+                            type: "Microsoft.Web/sites",
+                            name: `appService${node.id}`,
+                            apiVersion: "2021-02-01",
+                            location: node.properties.region,
+                            properties: {
+                                siteConfig: {
+                                    appSettings: [],
+                                    linuxFxVersion: ""
+                                },
+                                serverFarmId: `[resourceId('Microsoft.Web/serverfarms', 'appServicePlan${node.id}')]`,
+                                clientAffinityEnabled: true
+                            }
+                        };
+                        // Add app service plan
+                        resources.push({
+                            type: "Microsoft.Web/serverfarms",
+                            name: `appServicePlan${node.id}`,
+                            apiVersion: "2021-02-01",
+                            location: node.properties.region,
+                            sku: {
+                                name: node.properties.size,
+                                tier: node.properties.tier
+                            },
+                            properties: {}
+                        });
+                        break;
+                    case 'Azure SQL':
+                        resource = {
+                            type: "Microsoft.Sql/servers",
+                            name: `sqlserver${node.id}`,
+                            apiVersion: "2021-02-01-preview",
+                            location: node.properties.region,
+                            properties: {
+                                administratorLogin: "adminuser",
+                                administratorLoginPassword: "P@ssw0rd1234"
+                            }
+                        };
+                        // Add SQL database
+                        resources.push({
+                            type: "Microsoft.Sql/servers/databases",
+                            name: `[concat('sqlserver${node.id}', '/database${node.id}')]`,
+                            apiVersion: "2021-02-01-preview",
+                            location: node.properties.region,
+                            sku: {
+                                name: node.properties.size,
+                                tier: node.properties.tier
+                            },
+                            properties: {},
+                            dependsOn: [
+                                `[resourceId('Microsoft.Sql/servers', 'sqlserver${node.id}')]`
+                            ]
+                        });
+                        break;
+                    case 'Storage Account':
+                        resource = {
+                            type: "Microsoft.Storage/storageAccounts",
+                            name: `storage${node.id}`,
+                            apiVersion: "2021-04-01",
+                            location: node.properties.region,
+                            sku: {
+                                name: node.properties.type
+                            },
+                            kind: "StorageV2",
+                            properties: {
+                                accessTier: node.properties.accessTier,
+                                supportsHttpsTrafficOnly: true
+                            }
+                        };
+                        break;
+                    // Add more cases for other Azure services
+                    default:
+                        resource = {
+                            type: `Microsoft.Resources/deployments`,
+                            name: `${node.label.replace(/\s+/g, '')}${node.id}`,
+                            apiVersion: "2021-04-01",
+                            properties: {
+                                mode: "Incremental",
+                                template: {
+                                    $schema: "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                                    contentVersion: "1.0.0.0",
+                                    resources: []
+                                }
+                            }
+                        };
+                }
+                
+                resources.push(resource);
+            });
+            
+            // Create the full ARM template
+            const armTemplate = {
+                $schema: "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                contentVersion: "1.0.0.0",
+                parameters: {},
+                variables: {},
+                resources: resources,
+                outputs: {}
+            };
+            
+            return JSON.stringify(armTemplate, null, 2);
+        }
+
+        // Generate Terraform Template
+        function generateTerraformTemplate(nodes, connections) {
+            let terraform = `# Terraform configuration for Azure infrastructure
+provider "azurerm" {
+  features {}
+}
+
+resource "azurerm_resource_group" "rg" {
+  name     = "example-resources"
+  location = "East US"
+}
+
+`;
+            
+            nodes.forEach(node => {
+                switch(node.label) {
+                    case 'App Service':
+                        terraform += `
+resource "azurerm_app_service_plan" "plan${node.id}" {
+  name                = "appserviceplan-${node.id}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku {
+    tier = "${node.properties.tier}"
+    size = "${node.properties.size}"
+  }
+}
+
+resource "azurerm_app_service" "webapp${node.id}" {
+  name                = "webapp-${node.id}"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  app_service_plan_id = azurerm_app_service_plan.plan${node.id}.id
+}
+`;
+                        break;
+                    case 'Azure SQL':
+                        terraform += `
+resource "azurerm_sql_server" "sqlserver${node.id}" {
+  name                         = "sqlserver-${node.id}"
+  location                     = azurerm_resource_group.rg.location
+  resource_group_name          = azurerm_resource_group.rg.name
+  version                      = "12.0"
+  administrator_login          = "adminuser"
+  administrator_login_password = "P@ssw0rd1234"
+}
+
+resource "azurerm_sql_database" "db${node.id}" {
+  name                = "database-${node.id}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  server_name         = azurerm_sql_server.sqlserver${node.id}.name
+  edition             = "${node.properties.tier}"
+  requested_service_objective_name = "${node.properties.size}"
+}
+`;
+                        break;
+                    case 'Storage Account':
+                        terraform += `
+resource "azurerm_storage_account" "storage${node.id}" {
+  name                     = "storage${node.id}"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "${node.properties.type.replace('Standard_', '')}"
+  access_tier              = "${node.properties.accessTier}"
+}
+`;
+                        break;
+                    // Add more cases for other Azure services
+                    default:
+                        terraform += `
+# Resource for ${node.label} (${node.id})
+# This is a placeholder for the actual Terraform configuration
+resource "azurerm_resource_group_template_deployment" "${node.label.toLowerCase().replace(/\s+/g, '')}${node.id}" {
+  name                = "${node.label.replace(/\s+/g, '')}-${node.id}"
+  resource_group_name = azurerm_resource_group.rg.name
+  deployment_mode     = "Incremental"
+  template_content    = <<TEMPLATE
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": []
+}
+TEMPLATE
+}
+`;
+                }
+            });
+            
+            return terraform;
+        }
+
+        // Generate Bicep Template
+        function generateBicepTemplate(nodes, connections) {
+            let bicep = `// Bicep template for Azure infrastructure
+
+param location string = 'eastus'
+
+`;
+            
+            nodes.forEach(node => {
+                switch(node.label) {
+                    case 'App Service':
+                        bicep += `
+resource appServicePlan${node.id} 'Microsoft.Web/serverfarms@2021-02-01' = {
+  name: 'appServicePlan-${node.id}'
+  location: location
+  sku: {
+    name: '${node.properties.size}'
+    tier: '${node.properties.tier}'
+  }
+}
+
+resource appService${node.id} 'Microsoft.Web/sites@2021-02-01' = {
+  name: 'appService-${node.id}'
+  location: location
+  properties: {
+    serverFarmId: appServicePlan${node.id}.id
+    siteConfig: {
+      appSettings: []
+    }
+  }
+}
+`;
+                        break;
+                    case 'Azure SQL':
+                        bicep += `
+resource sqlServer${node.id} 'Microsoft.Sql/servers@2021-02-01-preview' = {
+  name: 'sqlserver-${node.id}'
+  location: location
+  properties: {
+    administratorLogin: 'adminuser'
+    administratorLoginPassword: 'P@ssw0rd1234'
+  }
+}
+
+resource sqlDatabase${node.id} 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
+  parent: sqlServer${node.id}
+  name: 'database-${node.id}'
+  location: location
+  sku: {
+    name: '${node.properties.size}'
+    tier: '${node.properties.tier}'
+  }
+}
+`;
+                        break;
+                    case 'Storage Account':
+                        bicep += `
+resource storageAccount${node.id} 'Microsoft.Storage/storageAccounts@2021-04-01' = {
+  name: 'storage${node.id}'
+  location: location
+  sku: {
+    name: '${node.properties.type}'
+  }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: '${node.properties.accessTier}'
+    supportsHttpsTrafficOnly: true
+  }
+}
+`;
+                        break;
+                    // Add more cases for other Azure services
+                    default:
+                        bicep += `
+// Resource for ${node.label} (${node.id})
+// This is a placeholder for the actual Bicep configuration
+resource ${node.label.toLowerCase().replace(/\s+/g, '')}${node.id} 'Microsoft.Resources/deployments@2021-04-01' = {
+  name: '${node.label.replace(/\s+/g, '')}-${node.id}'
+  properties: {
+    mode: 'Incremental'
+    template: {
+      '$schema': 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#'
+      contentVersion: '1.0.0.0'
+      resources: []
+    }
+  }
+}
+`;
+                }
+            });
+            
+            return bicep;
+        }
+
+        // Create a node element
+        function createNodeElement(node) {
+            const nodeElement = document.createElement('div');
+            nodeElement.className = `azure-node azure-node-${node.type}`;
+            nodeElement.id = `node-${node.id}`;
+            nodeElement.style.left = `${node.x}px`;
+            nodeElement.style.top = `${node.y}px`;
+            
+            // Node header
+            const header = document.createElement('div');
+            header.className = 'node-header';
+            
+            const icon = document.createElement('div');
+            icon.className = 'node-icon';
+            icon.textContent = node.icon;
+            
+            const titleContainer = document.createElement('div');
+            
+            const title = document.createElement('div');
+            title.className = 'node-title';
+            title.textContent = node.label;
+            
+            const type = document.createElement('div');
+            type.className = 'node-type';
+            type.textContent = node.type;
+            
+            titleContainer.appendChild(title);
+            titleContainer.appendChild(type);
+            
+            header.appendChild(icon);
+            header.appendChild(titleContainer);
+            
+            // Node properties
+            const properties = document.createElement('div');
+            properties.className = 'node-properties';
+            
+            Object.entries(node.properties).forEach(([key, value]) => {
+                const row = document.createElement('div');
+                row.className = 'property-row';
+                
+                const propName = document.createElement('span');
+                propName.className = 'property-name';
+                propName.textContent = `${key}:`;
+                
+                const propValue = document.createElement('span');
+                propValue.textContent = value;
+                
+                row.appendChild(propName);
+                row.appendChild(propValue);
+                properties.appendChild(row);
+            });
+            
+            nodeElement.appendChild(header);
+            nodeElement.appendChild(properties);
+            
+            // Add drag functionality
+            nodeElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                currentDragNode = node;
+                const rect = nodeElement.getBoundingClientRect();
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+                nodeElement.style.zIndex = '1000';
+            });
+            
+            return nodeElement;
+        }
+
+        // Get node center coordinates
+        function getNodeCenter(node) {
+            const nodeWidth = 180; // Width of the node
+            const nodeHeight = 120; // Approximate height of the node
+            
+            return {
+                x: node.x + nodeWidth / 2,
+                y: node.y + nodeHeight / 2
+            };
+        }
+
+        // Get node connection points (sides)
+        function getNodeConnectionPoints(node) {
+            const nodeWidth = 180;
+            const nodeHeight = 120;
+            
+            return {
+                top: { x: node.x + nodeWidth / 2, y: node.y },
+                right: { x: node.x + nodeWidth, y: node.y + nodeHeight / 2 },
+                bottom: { x: node.x + nodeWidth / 2, y: node.y + nodeHeight },
+                left: { x: node.x, y: node.y + nodeHeight / 2 }
+            };
+        }
+
+        // Calculate the best connection points between two nodes
+        function calculateConnectionPoints(sourceNode, targetNode) {
+            const sourceCenter = getNodeCenter(sourceNode);
+            const targetCenter = getNodeCenter(targetNode);
+            
+            const sourcePoints = getNodeConnectionPoints(sourceNode);
+            const targetPoints = getNodeConnectionPoints(targetNode);
+            
+            // Determine the best connection points based on relative positions
+            let sourcePoint, targetPoint;
+            
+            // Horizontal alignment
+            if (Math.abs(sourceCenter.y - targetCenter.y) < Math.abs(sourceCenter.x - targetCenter.x)) {
+                if (sourceCenter.x < targetCenter.x) {
+                    sourcePoint = sourcePoints.right;
+                    targetPoint = targetPoints.left;
+                } else {
+                    sourcePoint = sourcePoints.left;
+                    targetPoint = targetPoints.right;
+                }
+            } 
+            // Vertical alignment
+            else {
+                if (sourceCenter.y < targetCenter.y) {
+                    sourcePoint = sourcePoints.bottom;
+                    targetPoint = targetPoints.top;
+                } else {
+                    sourcePoint = sourcePoints.top;
+                    targetPoint = targetPoints.bottom;
+                }
+            }
+            
+            return { sourcePoint, targetPoint };
+        }
+
+        // Create a curved path between two points
+        function createCurvedPath(sourcePoint, targetPoint) {
+            // Calculate control points for the curve
+            const dx = targetPoint.x - sourcePoint.x;
+            const dy = targetPoint.y - sourcePoint.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // Control point distance (adjust for curve intensity)
+            const controlDistance = distance * 0.5;
+            
+            // Determine if the connection is primarily horizontal or vertical
+            const isHorizontal = Math.abs(dx) > Math.abs(dy);
+            
+            let controlPoint1, controlPoint2;
+            
+            if (isHorizontal) {
+                controlPoint1 = {
+                    x: sourcePoint.x + controlDistance,
+                    y: sourcePoint.y
+                };
+                controlPoint2 = {
+                    x: targetPoint.x - controlDistance,
+                    y: targetPoint.y
+                };
+            } else {
+                controlPoint1 = {
+                    x: sourcePoint.x,
+                    y: sourcePoint.y + controlDistance
+                };
+                controlPoint2 = {
+                    x: targetPoint.x,
+                    y: targetPoint.y - controlDistance
+                };
+            }
+            
+            // Create SVG path with cubic Bezier curve
+            return `M ${sourcePoint.x} ${sourcePoint.y} C ${controlPoint1.x} ${controlPoint1.y}, ${controlPoint2.x} ${controlPoint2.y}, ${targetPoint.x} ${targetPoint.y}`;
+        }
+
+        // Create or update a connection SVG path
+        function createConnectionPath(connection) {
+            const sourceNode = nodes.find(n => n.id === connection.source);
+            const targetNode = nodes.find(n => n.id === connection.target);
+            
+            if (!sourceNode || !targetNode) return null;
+            
+            const { sourcePoint, targetPoint } = calculateConnectionPoints(sourceNode, targetNode);
+            const pathData = createCurvedPath(sourcePoint, targetPoint);
+            
+            // Create or update the SVG path element
+            let pathElement = document.getElementById(`connection-${connection.source}-${connection.target}`);
+            
+            if (!pathElement) {
+                const svgContainer = document.getElementById('connections-svg');
+                pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathElement.id = `connection-${connection.source}-${connection.target}`;
+                pathElement.classList.add('connection-path');
+                svgContainer.appendChild(pathElement);
+            }
+            
+            pathElement.setAttribute('d', pathData);
+            
+            return pathElement;
+        }
+
+        // Update all connections
+        function updateConnections() {
+            connections.forEach(connection => {
+                createConnectionPath(connection);
+            });
+        }
+
+        // Add a component to the canvas
+        function addComponent(label, type, icon) {
+            // Find the service details from the mappings using the label
+            const serviceDetails = Object.values(azureServiceMappings).find(s => s.label === label);
+            if (!serviceDetails) {
+                console.error(`Service details not found for label: ${label}`);
+                return; // Exit if service details are not found
+            }
+
+            const node = {
+                id: nextNodeId++,
+                type: type, // Use the type passed from the component click
+                label: label,
+                icon: icon, // Use the icon passed from the component click
+                properties: serviceDetails.properties, // Use properties from the mapping
+                x: 100 + Math.random() * 200,
+                y: 100 + Math.random() * 100
+            };
+            
+            nodes.push(node);
+            renderNodes();
+            
+            // If there are other nodes, connect to the last one
+            if (nodes.length > 1) {
+                const sourceNode = nodes[nodes.length - 2];
+                const connection = {
+                    source: sourceNode.id,
+                    target: node.id
+                };
+                connections.push(connection);
+                renderConnections();
+            }
+            
+            // Show export panel and generate template code
+            document.getElementById('export-panel').style.display = 'block';
+            generateTemplateCode(nodes, connections);
+        }
+
+        // Render all nodes
+        function renderNodes() {
+            const canvas = document.getElementById('canvas');
+            
+            // Remove existing nodes
+            document.querySelectorAll('.azure-node').forEach(el => el.remove());
+            
+            // Add new nodes
+            nodes.forEach(node => {
+                const nodeElement = createNodeElement(node);
+                canvas.appendChild(nodeElement);
+            });
+        }
+
+        // Render all connections
+        function renderConnections() {
+            // Clear existing connection paths
+            const svgContainer = document.getElementById('connections-svg');
+            while (svgContainer.lastChild) {
+                if (svgContainer.lastChild.tagName !== 'defs') {
+                    svgContainer.removeChild(svgContainer.lastChild);
+                } else {
+                    break;
+                }
+            }
+            
+            // Add new connection paths
+            connections.forEach(connection => {
+                createConnectionPath(connection);
+            });
+        }
+
+        // Download template file
+        function downloadTemplate(content, filename) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('canvas');
+            const generateBtn = document.getElementById('generate-btn');
+            const promptInput = document.getElementById('prompt-input');
+            
+            // Handle mouse move for dragging
+            document.addEventListener('mousemove', (e) => {
+                if (isDragging && currentDragNode) {
+                    currentDragNode.x = e.clientX - dragOffsetX;
+                    currentDragNode.y = e.clientY - dragOffsetY;
+                    
+                    const nodeElement = document.getElementById(`node-${currentDragNode.id}`);
+                    if (nodeElement) {
+                        nodeElement.style.left = `${currentDragNode.x}px`;
+                        nodeElement.style.top = `${currentDragNode.y}px`;
+                    }
+                    
+                    updateConnections();
+                }
+            });
+            
+            // Handle mouse up to stop dragging
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    if (currentDragNode) {
+                        const nodeElement = document.getElementById(`node-${currentDragNode.id}`);
+                        if (nodeElement) {
+                            nodeElement.style.zIndex = '';
+                        }
+                    }
+                    currentDragNode = null;
+                }
+            });
+            
+            // Handle generate button click
+            generateBtn.addEventListener('click', async () => {
+                const prompt = promptInput.value.trim();
+                if (!prompt) return;
+                
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generating...';
+                
+                try {
+                    const result = await processPrompt(prompt);
+                    
+                    // Clear existing nodes and connections
+                    nodes = result.nodes;
+                    connections = result.connections;
+                    
+                    renderNodes();
+                    renderConnections();
+                    
+                    document.getElementById('export-panel').style.display = 'block';
+                } catch (error) {
+                    console.error('Error processing prompt:', error);
+                } finally {
+                    generateBtn.disabled = false;
+                    generateBtn.textContent = 'Generate Infrastructure';
+                }
+            });
+            
+            // Tab switching in export panel
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and content
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-content`).classList.add('active');
+                });
+            });
+            
+            // Download buttons
+            document.getElementById('download-arm').addEventListener('click', () => {
+                const content = document.getElementById('arm-editor').value;
+                downloadTemplate(content, 'azure-deployment.json');
+            });
+            
+            document.getElementById('download-terraform').addEventListener('click', () => {
+                const content = document.getElementById('terraform-editor').value;
+                downloadTemplate(content, 'main.tf');
+            });
+            
+            document.getElementById('download-bicep').addEventListener('click', () => {
+                const content = document.getElementById('bicep-editor').value;
+                downloadTemplate(content, 'main.bicep');
+            });
+            
+            // Deploy buttons
+            document.getElementById('deploy-arm').addEventListener('click', () => {
+                document.getElementById('azure-connection-panel').style.display = 'block';
+            });
+            
+            document.getElementById('deploy-terraform').addEventListener('click', () => {
+                document.getElementById('azure-connection-panel').style.display = 'block';
+            });
+            
+            document.getElementById('deploy-bicep').addEventListener('click', () => {
+                document.getElementById('azure-connection-panel').style.display = 'block';
+            });
+            
+            // Azure connection panel
+            document.getElementById('connect-azure').addEventListener('click', () => {
+                const subscriptionId = document.getElementById('subscription-id').value;
+                const tenantId = document.getElementById('tenant-id').value;
+                const resourceGroup = document.getElementById('resource-group').value;
+                
+                if (!subscriptionId || !tenantId || !resourceGroup) {
+                    alert('Please fill in all Azure connection details');
+                    return;
+                }
+                
+                alert('This would connect to Azure and deploy the template in a real implementation.');
+                document.getElementById('azure-connection-panel').style.display = 'none';
+            });
+            
+            document.getElementById('cancel-azure').addEventListener('click', () => {
+                document.getElementById('azure-connection-panel').style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
