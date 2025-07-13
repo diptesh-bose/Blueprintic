@@ -23,9 +23,10 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import AzureServiceNode from './AzureServiceNode';
+import AzureServiceNode from './EnhancedAzureServiceNode';
 import CustomEdge from './CustomEdge';
-import { useGenAI } from '../contexts/GenAIContext';
+import { useGenAI } from '../contexts/EnhancedGenAIContext';
+import { useDnD } from '../contexts/DnDContext';
 
 // Define custom node types
 const nodeTypes: NodeTypes = {
@@ -41,6 +42,10 @@ const edgeTypes: EdgeTypes = {
 const initialNodes: Node[] = [];
 const initialEdges: Edge[] = [];
 
+// ID generator for new nodes
+let nodeId = 0;
+const getId = () => `azure_node_${nodeId++}`;
+
 interface AzureFlowCanvasProps {
   onNodeSelect?: (node: Node | null) => void;
   onExportGenerated?: (code: string, type: string) => void;
@@ -50,9 +55,16 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [type, setType] = useDnD();
+
+  // Debug current state
+  useEffect(() => {
+    console.log('📊 Current nodes in state:', nodes.length, nodes);
+  }, [nodes]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string | null } | null>(null);
+  const [isDraggedOver, setIsDraggedOver] = useState(false);
   
   // Connection mode state
   const [isManualConnectionMode, setIsManualConnectionMode] = useState(false);
@@ -62,13 +74,29 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
 
   // Update canvas when GenAI generates new nodes and edges
   useEffect(() => {
+    console.log('🔄 GenAI update:', { 
+      generatedNodesCount: generatedNodes.length, 
+      generatedEdgesCount: generatedEdges.length,
+      generatedNodes: generatedNodes
+    });
+    
     if (generatedNodes.length > 0) {
+      console.log('📊 Setting nodes:', generatedNodes);
       setNodes(generatedNodes);
+      
+      // Force fit view after setting nodes
+      setTimeout(() => {
+        if (reactFlowInstance) {
+          console.log('🔍 Fitting view to show nodes');
+          reactFlowInstance.fitView({ padding: 0.2 });
+        }
+      }, 100);
     }
     if (generatedEdges.length > 0) {
+      console.log('📊 Setting edges:', generatedEdges);
       setEdges(generatedEdges);
     }
-  }, [generatedNodes, generatedEdges, setNodes, setEdges]);
+  }, [generatedNodes, generatedEdges, setNodes, setEdges, reactFlowInstance]);
 
   // Handle connections between nodes
   const onConnect = useCallback(
@@ -124,46 +152,149 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
 
   // Handle drag over for new node creation
   const onDragOver = useCallback((event: React.DragEvent) => {
+    console.log('🎯 DRAG OVER - Event:', event);
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
+    console.log('✅ DRAG OVER - preventDefault called, dropEffect set to move');
   }, []);
 
-  // Handle drop for new node creation
+  // Handle drag enter
+  const onDragEnter = useCallback((event: React.DragEvent) => {
+    console.log('🔵 DRAG ENTER - Event:', event);
+    event.preventDefault();
+    setIsDraggedOver(true);
+  }, []);
+
+  // Handle drag leave  
+  const onDragLeave = useCallback((event: React.DragEvent) => {
+    console.log('🔴 DRAG LEAVE - Event:', event);
+    // Only set to false if leaving the canvas entirely
+    if (!event.currentTarget.contains(event.relatedTarget as Element)) {
+      setIsDraggedOver(false);
+    }
+  }, []);
+
+  // Handle drop for new node creation - using official React Flow pattern
   const onDrop = useCallback(
     (event: React.DragEvent) => {
+      console.log('📍 DROP EVENT TRIGGERED');
+      console.log('📍 DROP - Event:', event);
+      console.log('📍 DROP - DataTransfer:', event.dataTransfer);
+      
       event.preventDefault();
+      setIsDraggedOver(false); // Reset drag state
+      console.log('✅ DROP - preventDefault called');
 
-      const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
-      const type = event.dataTransfer.getData('application/reactflow/type');
-      const nodeData = JSON.parse(event.dataTransfer.getData('application/reactflow/data'));
-
-      // Check if the dropped element is valid
-      if (typeof type === 'undefined' || !type || !reactFlowBounds || !reactFlowInstance) {
+      // Check if the dropped element is valid using DnD context
+      console.log('🔍 DROP - Type from context:', type);
+      if (!type) {
+        console.log('❌ DROP - No type set in DnD context');
         return;
       }
 
-      const position = reactFlowInstance.project({
+      // Try to get service data from multiple data types as per MDN
+      console.log('📦 DROP - Available data types:', event.dataTransfer.types);
+      
+      let serviceDataStr = '';
+      
+      // Try different data types in order of preference
+      if (event.dataTransfer.types.includes('application/azure-service')) {
+        serviceDataStr = event.dataTransfer.getData('application/azure-service');
+        console.log('📦 DROP - Got data from application/azure-service:', serviceDataStr);
+      } else if (event.dataTransfer.types.includes('application/json')) {
+        serviceDataStr = event.dataTransfer.getData('application/json');
+        console.log('📦 DROP - Got data from application/json:', serviceDataStr);
+      } else {
+        console.log('❌ DROP - No valid data type found in:', event.dataTransfer.types);
+        return;
+      }
+
+      if (!serviceDataStr) {
+        console.log('❌ DROP - No service data string');
+        return;
+      }
+
+      let serviceData;
+      try {
+        serviceData = JSON.parse(serviceDataStr);
+        console.log('✅ DROP - Parsed service data:', serviceData);
+      } catch (error) {
+        console.error('❌ DROP - Failed to parse service data:', error);
+        return;
+      }
+
+      // Get the bounding rectangle of the React Flow canvas
+      const reactFlowBounds = reactFlowWrapper.current?.getBoundingClientRect();
+      console.log('📍 DROP - ReactFlow bounds:', reactFlowBounds);
+      console.log('📍 DROP - Client coordinates:', { x: event.clientX, y: event.clientY });
+      
+      if (!reactFlowBounds) {
+        console.log('❌ DROP - Could not get ReactFlow bounds');
+        return;
+      }
+
+      // Calculate position relative to the React Flow canvas
+      const position = {
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
-      });
+      };
+
+      console.log('📍 DROP - Calculated position:', position);
 
       // Create a new node
       const newNode = {
-        id: `node_${Date.now()}`,
+        id: getId(),
         type: 'azureService',
         position,
         data: { 
-          ...nodeData,
-          label: nodeData.label || 'New Node',
+          label: serviceData.name,
+          name: serviceData.name,
+          category: serviceData.category,
+          description: serviceData.description,
+          color: serviceData.color,
+          icon: serviceData.icon,
+          properties: serviceData.properties,
+          type: serviceData.type
         },
       };
 
-      setNodes((nds) => nds.concat(newNode));
+      console.log('✅ DROP - Creating new node:', newNode);
+      setNodes((nds) => {
+        const newNodes = nds.concat(newNode);
+        console.log('📊 DROP - Updated nodes array:', newNodes.length, 'total nodes');
+        console.log('📊 DROP - All nodes:', newNodes);
+        return newNodes;
+      });
     },
-    [reactFlowInstance, setNodes]
+    [type, setNodes]
   );
 
-  // Toggle manual connection mode
+  // Manual test function to verify node creation works
+  const addTestNode = useCallback(() => {
+    console.log('🧪 MANUAL TEST - Adding node manually');
+    const testNode = {
+      id: getId(),
+      type: 'azureService',
+      position: { x: 100, y: 100 },
+      data: {
+        label: 'Test Service',
+        name: 'Test Service',
+        category: 'compute',
+        description: 'Manual test node',
+        color: '#0078D4',
+        icon: 'Server',
+        properties: { test: 'manual' },
+        type: 'test'
+      },
+    };
+    
+    console.log('🧪 MANUAL TEST - Creating node:', testNode);
+    setNodes((nds) => {
+      const newNodes = nds.concat(testNode);
+      console.log('🧪 MANUAL TEST - Updated nodes:', newNodes);
+      return newNodes;
+    });
+  }, [setNodes]);
   const toggleManualConnectionMode = useCallback(() => {
     setIsManualConnectionMode(!isManualConnectionMode);
   }, [isManualConnectionMode]);
@@ -651,7 +782,31 @@ resource ${data.label.toLowerCase().replace(/\s+/g, '')}${node.id.split('_')[1]}
   };
 
   return (
-    <div className="w-full h-full relative" ref={reactFlowWrapper}>
+    <div 
+      className={`w-full h-full relative ${isDraggedOver ? 'bg-blue-50' : ''}`}
+      ref={reactFlowWrapper}
+      onDrop={onDrop}
+      onDragOver={onDragOver}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+    >
+      {/* Manual Test Button */}
+      <div className="absolute top-4 left-4 z-50">
+        <button
+          onClick={addTestNode}
+          className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+        >
+          ➕ Add Test Node
+        </button>
+      </div>
+
+      {isDraggedOver && (
+        <div className="absolute inset-0 bg-blue-100 bg-opacity-50 border-2 border-dashed border-blue-300 z-50 flex items-center justify-center">
+          <div className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
+            Drop Azure service here
+          </div>
+        </div>
+      )}
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -659,8 +814,6 @@ resource ${data.label.toLowerCase().replace(/\s+/g, '')}${node.id.split('_')[1]}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onInit={setReactFlowInstance}
-        onDrop={onDrop}
-        onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
@@ -678,6 +831,8 @@ resource ${data.label.toLowerCase().replace(/\s+/g, '')}${node.id.split('_')[1]}
           },
         }}
         connectionMode={isManualConnectionMode ? ConnectionMode.Loose : ConnectionMode.Strict}
+        style={{ width: '100%', height: '100%', zIndex: 1 }}
+        className="react-flow-container"
       >
         <Controls />
         <MiniMap 
@@ -695,6 +850,26 @@ resource ${data.label.toLowerCase().replace(/\s+/g, '')}${node.id.split('_')[1]}
               onClick={toggleManualConnectionMode}
             >
               {isManualConnectionMode ? 'Manual Connection: ON' : 'Manual Connection: OFF'}
+            </button>
+            <button 
+              className="px-3 py-1 rounded text-sm bg-green-500 text-white hover:bg-green-600"
+              onClick={() => {
+                const testNode = {
+                  id: 'test-' + Date.now(),
+                  type: 'azureService',
+                  position: { x: 200, y: 200 },
+                  data: {
+                    label: 'Test Node',
+                    category: 'compute',
+                    description: 'Test node for debugging',
+                    color: '#0078d4'
+                  }
+                };
+                console.log('🧪 Adding test node:', testNode);
+                setNodes(prev => [...prev, testNode]);
+              }}
+            >
+              Add Test Node
             </button>
             <div className="text-xs text-gray-500">
               {isManualConnectionMode 

@@ -4,11 +4,13 @@ A GenAI-powered web application that enables users to architect, design, and imp
 
 ## 🌟 Features
 
-- **Natural Language Processing**: Describe your infrastructure needs in plain English, and the AI will generate a visual blueprint
-- **Drag-and-Drop Interface**: Easily customize your infrastructure design with an intuitive canvas
-- **Azure Service Components**: Library of Azure services with visual representations and properties
-- **Export Options**: Generate ARM templates, Terraform configurations, or Bicep files from your designs
-- **Real-time Visualization**: Interactive canvas with React Flow for component connections
+- **AI-Powered Natural Language Processing**: Describe your infrastructure needs in plain English using Google Gemini AI
+- **Interactive Drag-and-Drop Interface**: Enhanced React Flow canvas with real Azure service icons
+- **Real Azure Service Components**: Comprehensive library with authentic Azure service representations
+- **Multi-Format Code Generation**: Generate ARM templates, Terraform configurations, and Azure DevOps YAML pipelines
+- **Infrastructure Optimization**: AI-powered suggestions for cost, performance, and security improvements
+- **Real-time Visualization**: Advanced React Flow canvas with custom nodes, edges, and connection handles
+- **API Integration**: Direct integration with Google Gemini API for intelligent infrastructure generation
 
 ## 📁 Project Structure
 
@@ -55,6 +57,7 @@ azure-infrastructure-designer/
 - Node.js (version 18 or higher)
 - pnpm (recommended) or npm
 - Modern web browser
+- Google Gemini API key (get from [Google AI Studio](https://makersuite.google.com/app/apikey))
 
 ### Installation
 
@@ -72,20 +75,47 @@ azure-infrastructure-designer/
    npm install
    ```
 
+3. **Configure environment:**
+   ```powershell
+   # Copy the example environment file
+   copy .env.example .env
+   
+   # Edit .env and add your Gemini API key
+   # VITE_GEMINI_API_KEY=your_actual_api_key_here
+   ```
+
 ### Running the Application
 
-#### Option 1: React Development Server
+#### React Development Server (Recommended)
 
 1. **Start the development server:**
-   ```bash
-   # Using pnpm
-   pnpm run dev
-
-   # Or using npm
+   ```powershell
    npm run dev
    ```
 
-2. **Open your browser and navigate to:**
+2. **Open your browser:**
+   - Navigate to `http://localhost:5177` (or the port shown in terminal)
+   - You should see the modern React-based Azure Infrastructure Designer
+
+3. **Test the application:**
+   
+   **Demo Mode Test (No API Key Required):**
+   - Type: "I need a web application with a SQL database"
+   - Click "Generate Infrastructure"
+   - After 2 seconds, you should see demo nodes appear on the canvas
+   
+   **Real AI Mode Test (Requires API Key):**
+   - Click "Configure API" button (yellow button in prompt panel)
+   - Enter your Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Status should show "API Configured" with green background
+   - Type the same prompt and generate again
+   - You should see real AI-generated infrastructure with proper ARM/Terraform code
+
+#### Troubleshooting
+If you see a basic HTML interface instead of the modern React app, make sure:
+- You're using the correct port (check terminal output)
+- The browser cache is cleared (Ctrl+F5)
+- No other instances are running on the same port
    ```
    http://localhost:5173
    ```
@@ -112,16 +142,16 @@ pnpm run preview
 
 ## 🎯 How to Use
 
-### 1. Using the Prompt Interface
+### 1. Using AI-Powered Natural Language Input
 
-1. **Enter a description** in the prompt input area:
+1. **Configure your API key** by clicking the "Configure API" button
+2. **Enter your Google Gemini API key** from [Google AI Studio](https://makersuite.google.com/app/apikey)
+3. **Describe your infrastructure** in the prompt input area:
    ```
    Example: "I need a web application with a SQL database, storage for user uploads, and authentication"
    ```
-
-2. **Click "Generate Infrastructure"** to process your prompt
-
-3. **Review the generated blueprint** on the canvas
+4. **Click "Generate Infrastructure"** to let AI create your blueprint
+5. **Use "Optimize"** to get AI-powered improvements for cost, security, and performance
 
 ### 2. Manual Component Addition
 
@@ -168,7 +198,9 @@ The application includes support for:
 ### Technology Stack
 
 - **Frontend**: React 18 + TypeScript
-- **Canvas**: React Flow for drag-and-drop functionality
+- **Canvas**: React Flow 11.x for advanced drag-and-drop functionality
+- **AI Integration**: Google Gemini API for natural language processing
+- **Icons**: Lucide React + React Icons for authentic Azure service representations  
 - **Styling**: Tailwind CSS
 - **State Management**: React Context API
 - **Build Tool**: Vite
@@ -209,13 +241,15 @@ The application has been tested for:
 
 See [`Azure Infrastructure Designer - Testing Report.md`](Azure%20Infrastructure%20Designer%20-%20Testing%20Report.md) for detailed testing results.
 
-## 🔮 Future Enhancements
+## 🔮 Enhanced Features (v2.0)
 
-1. **Real GenAI Integration**: Replace mock implementation with actual Azure OpenAI service
-2. **Backend API**: Add user authentication and project persistence
-3. **Advanced Canvas Features**: Component grouping, templates, and detailed property editing
-4. **Cost Estimation**: Real-time Azure cost calculations
-5. **Deployment Integration**: Direct deployment to Azure subscriptions
+1. **Google Gemini AI Integration**: Real AI-powered infrastructure generation from natural language
+2. **Enhanced React Flow Canvas**: Modern, interactive canvas with improved node/edge handling
+3. **Real Azure Icons**: Authentic Azure service icons using Lucide React and React Icons
+4. **Multi-Format Code Export**: ARM, Terraform, and Azure DevOps YAML pipeline generation
+5. **Infrastructure Optimization**: AI-powered cost, security, and performance recommendations
+6. **Advanced Component Library**: Categorized Azure services with detailed properties and descriptions
+7. **Error Handling & Validation**: Comprehensive error handling and API key management
 
 ## 🤝 Contributing
 

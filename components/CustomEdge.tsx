@@ -2,7 +2,6 @@ import { getBezierPath, EdgeProps, BaseEdge } from 'reactflow';
 
 // Define the CustomEdge component
 const CustomEdge = ({
-  id,
   sourceX,
   sourceY,
   targetX,
@@ -66,7 +65,7 @@ const CustomEdge = ({
           stroke: edgeColor,
           strokeWidth: 2,
           strokeDasharray: data?.type ? 'none' : '5,5',
-          animation: style?.animated ? 'flow 30s infinite linear' : 'none',
+          // animation: style?.animated ? 'flow 30s infinite linear' : 'none',
         }}
       />
       
@@ -91,7 +90,7 @@ const CustomEdge = ({
       )}
       
       {/* Edge animation styles */}
-      <style jsx>{`
+      <style>{`
         @keyframes flow {
           from {
             stroke-dashoffset: 1000;

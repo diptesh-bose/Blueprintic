@@ -1,5 +1,21 @@
-import App from './App'
-import './styles/tailwind.css'
 import { createRoot } from 'react-dom/client'
+import App from './App'
+import './App.css'
+import './styles/tailwind.css'
+import 'reactflow/dist/style.css'
 
-createRoot(document.getElementById('root')!).render(<App />)
+console.log('🚀 Main.tsx loaded - attempting to render React app...')
+
+const rootElement = document.getElementById('root')
+if (!rootElement) {
+  console.error('❌ Root element not found!')
+} else {
+  console.log('✅ Root element found, creating React root...')
+  try {
+    const root = createRoot(rootElement)
+    root.render(<App />)
+    console.log('✅ React app rendered successfully!')
+  } catch (error) {
+    console.error('❌ Error rendering React app:', error)
+  }
+}
