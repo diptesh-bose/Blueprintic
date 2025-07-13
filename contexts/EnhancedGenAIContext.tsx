@@ -17,6 +17,7 @@ interface GenAIContextType {
   // Actions
   processPrompt: (prompt: string) => Promise<void>;
   optimizeInfrastructure: () => Promise<void>;
+  generateCodeFromCanvas: (nodes: Node[], edges: Edge[]) => Promise<void>;
   clearGenerated: () => void;
   
   // Error handling
@@ -329,6 +330,66 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
+  // Generate infrastructure code from current canvas nodes
+  const generateCodeFromCanvas = useCallback(async (nodes: Node[], edges: Edge[]) => {
+    if (!geminiService) {
+      setError('AI service not configured. Please set your API key.');
+      return;
+    }
+
+    if (nodes.length === 0) {
+      setError('No services on canvas to generate code from.');
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      console.log('🔄 Generating infrastructure code from canvas...', { nodes, edges });
+
+      // Convert canvas nodes to infrastructure requirement format
+      const services: any[] = nodes.map(node => ({
+        id: node.id,
+        name: node.data.label || node.data.name || 'Unnamed Service',
+        type: node.data.type || 'Microsoft.Resources/deployments',
+        category: node.data.category || 'compute',
+        properties: node.data.properties || {},
+        position: node.position,
+        dependencies: []
+      }));
+
+      const connections: ServiceConnection[] = edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        connectionType: 'http', // Default connection type
+        properties: edge.data || {}
+      }));
+
+      const infrastructure: InfrastructureRequirement = {
+        description: `Infrastructure generated from canvas with ${services.length} services`,
+        services,
+        connections,
+        resourceGroup: 'generated-rg',
+        region: 'East US'
+      };
+
+      console.log('📋 Infrastructure requirement:', infrastructure);
+
+      // Generate code using Gemini AI
+      const code = await geminiService.generateInfrastructureCode(infrastructure);
+      setGeneratedCode(code);
+      
+      console.log('✅ Infrastructure code generated successfully', code);
+    } catch (error) {
+      console.error('❌ Error generating infrastructure code from canvas:', error);
+      setError(error instanceof Error ? error.message : 'Failed to generate infrastructure code');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [geminiService]);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -342,6 +403,7 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
     generatedCode,
     processPrompt,
     optimizeInfrastructure,
+    generateCodeFromCanvas,
     clearGenerated,
     error,
     clearError,

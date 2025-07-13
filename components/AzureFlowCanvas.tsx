@@ -26,6 +26,7 @@ import 'reactflow/dist/style.css';
 import AzureServiceNode from './EnhancedAzureServiceNode';
 import CustomEdge from './CustomEdge';
 import { useGenAI } from '../contexts/EnhancedGenAIContext';
+import ManualUpdateButton from './ManualUpdateButton';
 import { useDnD } from '../contexts/DnDContext';
 
 // Define custom node types
@@ -791,13 +792,16 @@ resource ${data.label.toLowerCase().replace(/\s+/g, '')}${node.id.split('_')[1]}
       onDragLeave={onDragLeave}
     >
       {/* Manual Test Button */}
-      <div className="absolute top-4 left-4 z-50">
+      <div className="absolute top-4 left-4 z-50 flex gap-2">
         <button
           onClick={addTestNode}
           className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
         >
           ➕ Add Test Node
         </button>
+        
+        {/* Manual Infrastructure Code Update Button */}
+        <ManualUpdateButton nodes={nodes} edges={edges} />
       </div>
 
       {isDraggedOver && (
