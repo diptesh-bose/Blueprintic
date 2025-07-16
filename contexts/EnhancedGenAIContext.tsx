@@ -79,11 +79,39 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
   const convertInfrastructureToNodes = useCallback((infrastructure: InfrastructureRequirement): { nodes: Node[], edges: Edge[] } => {
     console.log('🔄 Converting infrastructure to nodes:', infrastructure);
     
-    const nodes: Node[] = infrastructure.services.map((service) => {
+    const nodes: Node[] = [];
+
+    // First, create group/container nodes if they exist
+    if (infrastructure.groups && infrastructure.groups.length > 0) {
+      infrastructure.groups.forEach((group) => {
+        const groupNode = {
+          id: group.id,
+          type: 'azureGroup',
+          position: group.position,
+          style: {
+            width: group.size.width,
+            height: group.size.height,
+          },
+          data: {
+            label: group.name,
+            name: group.name,
+            groupType: group.groupType,
+            description: group.properties.description || `${group.groupType.replace('-', ' ')} container`,
+            color: '#0078d4'
+          }
+        };
+        
+        console.log('📦 Created group node:', groupNode);
+        nodes.push(groupNode);
+      });
+    }
+
+    // Then, create service nodes
+    infrastructure.services.forEach((service) => {
       // Find the service definition from our Azure services
       const serviceDefinition = findServiceDefinition(service.type, service.category);
       
-      const node = {
+      const node: Node = {
         id: service.id,
         type: 'azureService',
         position: service.position,
@@ -95,9 +123,23 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
           description: serviceDefinition?.description || service.name
         }
       };
+
+      // If the service belongs to a parent container, set the parentId and extent
+      if (service.parentId && service.extent) {
+        node.parentId = service.parentId;
+        node.extent = service.extent;
+      }
+
+      // Set size if provided
+      if (service.size) {
+        node.style = {
+          width: service.size.width,
+          height: service.size.height
+        };
+      }
       
-      console.log('📦 Created node:', node);
-      return node;
+      console.log('📦 Created service node:', node);
+      nodes.push(node);
     });
 
     const edges: Edge[] = infrastructure.connections.map((connection) => ({
@@ -197,8 +239,53 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
   const generateDemoInfrastructure = (prompt: string): InfrastructureRequirement => {
     const lowerPrompt = prompt.toLowerCase();
     const services: any[] = [];
+    const groups: any[] = [];
     const connections: ServiceConnection[] = [];
     let nodeIndex = 0;
+
+    // Check if resource group or container is mentioned
+    const needsResourceGroup = lowerPrompt.includes('resource group') || 
+                              lowerPrompt.includes('container') || 
+                              lowerPrompt.includes('group') ||
+                              (lowerPrompt.includes('vm') && lowerPrompt.includes('sql'));
+
+    let resourceGroupId = '';
+    if (needsResourceGroup) {
+      resourceGroupId = 'rg-main-container';
+      groups.push({
+        id: resourceGroupId,
+        name: 'Main Resource Group',
+        type: 'azureGroup',
+        groupType: 'resource-group',
+        category: 'grouping',
+        position: { x: 50, y: 50 },
+        size: { width: 500, height: 400 },
+        properties: {
+          description: 'Main resource group container',
+          region: 'East US'
+        }
+      });
+    }
+
+    // Virtual Machines
+    if (lowerPrompt.includes('vm') || lowerPrompt.includes('virtual machine')) {
+      const vmCount = lowerPrompt.includes('2 vm') || lowerPrompt.includes('two vm') ? 2 : 1;
+      
+      for (let i = 0; i < vmCount; i++) {
+        services.push({
+          id: `vm-${nodeIndex}`,
+          name: `Virtual Machine ${i + 1}`,
+          type: 'Microsoft.Compute/virtualMachines',
+          category: 'compute',
+          parentId: needsResourceGroup ? resourceGroupId : undefined,
+          extent: needsResourceGroup ? 'parent' : undefined,
+          properties: { size: 'Standard_B2s', os: 'Windows', region: 'East US' },
+          position: { x: 70 + (i * 180), y: 80 },
+          size: { width: 160, height: 100 }
+        });
+        nodeIndex++;
+      }
+    }
 
     // Basic web application
     if (lowerPrompt.includes('web') || lowerPrompt.includes('app')) {
@@ -207,8 +294,11 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
         name: 'App Service',
         type: 'Microsoft.Web/sites',
         category: 'compute',
+        parentId: needsResourceGroup ? resourceGroupId : undefined,
+        extent: needsResourceGroup ? 'parent' : undefined,
         properties: { tier: 'Standard', size: 'S1', region: 'East US' },
-        position: { x: 100, y: 100 }
+        position: needsResourceGroup ? { x: 70, y: 80 } : { x: 100, y: 100 },
+        size: { width: 160, height: 100 }
       });
       nodeIndex++;
     }
@@ -217,16 +307,19 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
     if (lowerPrompt.includes('database') || lowerPrompt.includes('sql') || lowerPrompt.includes('data')) {
       services.push({
         id: `sql-db-${nodeIndex}`,
-        name: 'Azure SQL Database',
-        type: 'Microsoft.Sql/servers/databases',
+        name: 'SQL Server',
+        type: 'Microsoft.Sql/servers',
         category: 'database',
+        parentId: needsResourceGroup ? resourceGroupId : undefined,
+        extent: needsResourceGroup ? 'parent' : undefined,
         properties: { tier: 'Standard', size: 'S2', region: 'East US' },
-        position: { x: 100, y: 300 }
+        position: needsResourceGroup ? { x: 280, y: 220 } : { x: 100, y: 300 },
+        size: { width: 160, height: 100 }
       });
       
       if (services.length > 1) {
         connections.push({
-          id: 'app-to-db',
+          id: 'service-to-db',
           source: services[0].id,
           target: services[services.length - 1].id,
           connectionType: 'database'
@@ -242,27 +335,18 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
         name: 'Storage Account',
         type: 'Microsoft.Storage/storageAccounts',
         category: 'storage',
+        parentId: needsResourceGroup ? resourceGroupId : undefined,
+        extent: needsResourceGroup ? 'parent' : undefined,
         properties: { type: 'Standard_LRS', accessTier: 'Hot', region: 'East US' },
-        position: { x: 400, y: 200 }
-      });
-      nodeIndex++;
-    }
-
-    // Authentication
-    if (lowerPrompt.includes('auth') || lowerPrompt.includes('login') || lowerPrompt.includes('user')) {
-      services.push({
-        id: `auth-${nodeIndex}`,
-        name: 'Azure AD B2C',
-        type: 'Microsoft.AzureActiveDirectory/b2cDirectories',
-        category: 'security',
-        properties: { tier: 'Standard', region: 'Global' },
-        position: { x: 50, y: 100 }
+        position: needsResourceGroup ? { x: 70, y: 220 } : { x: 400, y: 200 },
+        size: { width: 160, height: 100 }
       });
       nodeIndex++;
     }
 
     return {
       description: prompt,
+      groups: groups.length > 0 ? groups : undefined,
       services,
       connections,
       resourceGroup: 'rg-demo-infrastructure',
@@ -281,17 +365,38 @@ export const GenAIProvider: React.FC<GenAIProviderProps> = ({ children }) => {
 
     try {
       // Convert current nodes back to infrastructure format
+      const currentGroups = generatedNodes.filter(node => node.type === 'azureGroup').map(node => ({
+        id: node.id,
+        name: node.data.name,
+        type: 'azureGroup' as const,
+        groupType: node.data.groupType,
+        category: 'grouping' as const,
+        position: node.position,
+        size: { 
+          width: typeof node.style?.width === 'number' ? node.style.width : 400, 
+          height: typeof node.style?.height === 'number' ? node.style.height : 300 
+        },
+        properties: node.data.properties || {}
+      }));
+
+      const currentServices = generatedNodes.filter(node => node.type === 'azureService').map(node => ({
+        id: node.id,
+        name: node.data.name,
+        type: node.data.type,
+        category: node.data.category,
+        parentId: node.parentId,
+        extent: node.extent === 'parent' ? 'parent' as const : undefined,
+        properties: node.data.properties,
+        position: node.position,
+        size: node.style && typeof node.style.width === 'number' && typeof node.style.height === 'number' ? 
+          { width: node.style.width, height: node.style.height } : undefined,
+        dependencies: node.data.dependencies
+      }));
+
       const currentInfrastructure: InfrastructureRequirement = {
         description: prompt,
-        services: generatedNodes.map(node => ({
-          id: node.id,
-          name: node.data.name,
-          type: node.data.type,
-          category: node.data.category,
-          properties: node.data.properties,
-          position: node.position,
-          dependencies: node.data.dependencies
-        })),
+        groups: currentGroups.length > 0 ? currentGroups : undefined,
+        services: currentServices,
         connections: generatedEdges.map(edge => ({
           id: edge.id,
           source: edge.source,

@@ -1,0 +1,157 @@
+/* Azure Infrastructure Designer - XY Flow Theme */
+
+.react-flow {
+    /* Azure Theme Variables */
+    --xy-theme-selected: #0078D4;
+    --xy-theme-hover: #106EBE;
+    --xy-theme-edge-hover: #0078D4;
+    --xy-theme-color-focus: #DEECF9;
+    
+    /* Azure Group Colors */
+    --azure-resource-group: rgba(0, 120, 212, 0.1);
+    --azure-resource-group-border: #0078D4;
+    --azure-subnet-group: rgba(16, 110, 190, 0.15);
+    --azure-subnet-group-border: #106EBE;
+
+    /* Built-in Variables */
+    --xy-node-border-default: 1px solid #E1E1E1;
+    --xy-node-boxshadow-default: 
+      0px 3.54px 4.55px 0px #00000005, 
+      0px 3.54px 4.55px 0px #0000000D, 
+      0px 0.51px 1.01px 0px #0000001A;
+    --xy-node-border-radius-default: 8px;
+    --xy-handle-background-color-default: #ffffff;
+    --xy-handle-border-color-default: #AAAAAA;
+    --xy-edge-label-color-default: #505050;
+}
+
+.react-flow.dark { 
+    --xy-node-boxshadow-default: 
+    0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.05),
+    0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.13),
+    0px 0.51px 1.01px 0px rgba(255, 255, 255, 0.2);
+    --xy-theme-color-focus: #535353;
+}
+
+/* Default Node Styling */
+.react-flow__node {
+    box-shadow: var(--xy-node-boxshadow-default);
+    border-radius: var(--xy-node-border-radius-default);
+    background-color: var(--xy-node-background-color-default);
+    border: var(--xy-node-border-default);
+    color: var(--xy-node-color, var(--xy-node-color-default));
+}
+
+.react-flow__node.selectable:focus {
+    box-shadow: 0px 0px 0px 4px var(--xy-theme-color-focus);
+    border-color: var(--xy-theme-selected);
+}
+
+.react-flow__node.selectable:hover, 
+.react-flow__node.draggable:hover {
+    border-color: var(--xy-theme-hover);
+}
+
+.react-flow__node.selectable.selected {
+    border-color: var(--xy-theme-selected);
+    box-shadow: var(--xy-node-boxshadow-default);
+}
+
+/* Azure Group Node Styling */
+.react-flow__node-group {
+    background-color: var(--azure-resource-group);
+    border: 2px dashed var(--azure-resource-group-border);
+    border-radius: 12px;
+    padding: 20px;
+    min-width: 300px;
+    min-height: 200px;
+}
+
+.react-flow__node-group.azure-resource-group {
+    background-color: var(--azure-resource-group);
+    border-color: var(--azure-resource-group-border);
+}
+
+.react-flow__node-group.azure-subnet {
+    background-color: var(--azure-subnet-group);
+    border-color: var(--azure-subnet-group-border);
+}
+
+.react-flow__node-group.selected {
+    border-style: solid;
+    background-color: var(--xy-theme-color-focus);
+}
+
+/* Edge Styling */
+.react-flow__edge.selectable:hover .react-flow__edge-path,
+.react-flow__edge.selectable.selected .react-flow__edge-path {
+    stroke: var(--xy-theme-edge-hover);
+    stroke-width: 2px;
+}
+
+/* Handle Styling */
+.react-flow__handle {
+    background-color: var(--xy-handle-background-color-default);
+    border: 2px solid var(--xy-handle-border-color-default);
+}
+
+.react-flow__handle.connectionindicator:hover {
+    pointer-events: all;
+    border-color: var(--xy-theme-edge-hover);
+    background-color: white;
+}
+
+.react-flow__handle.connectionindicator:focus,
+.react-flow__handle.connectingfrom,
+.react-flow__handle.connectingto {
+    border-color: var(--xy-theme-edge-hover);
+}
+
+/* Resize Controls */
+.react-flow__node-resizer {
+    border-radius: 0;
+    border: none;
+    z-index: 1000 !important;
+}
+
+.react-flow__resize-control {
+    z-index: 1001 !important;
+}
+
+.react-flow__resize-control.handle {
+    background-color: #0078D4 !important;
+    border: 3px solid #ffffff !important;
+    border-radius: 4px !important;
+    width: 14px !important;
+    height: 14px !important;
+    opacity: 1 !important;
+    cursor: nw-resize !important;
+    z-index: 1001 !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.react-flow__resize-control.handle:hover {
+    background-color: #106ebe !important;
+    transform: scale(1.3) !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Make sure resize line is visible */
+.react-flow__resize-control-line {
+    border-color: #0078D4 !important;
+    border-width: 2px !important;
+    z-index: 1000 !important;
+}
+
+/* Specific styling for Azure Service nodes */
+.react-flow__node.azureService .react-flow__resize-control.handle {
+    background-color: var(--node-color, #0078D4) !important;
+}
+
+/* Specific styling for Azure Group nodes */
+.react-flow__node.azureGroup .react-flow__resize-control.handle {
+    background-color: #0078D4 !important;
+    width: 16px !important;
+    height: 16px !important;
+}

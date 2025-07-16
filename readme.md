@@ -12,7 +12,17 @@ A GenAI-powered web application that enables users to architect, design, and imp
 - **Real-time Visualization**: Advanced React Flow canvas with custom nodes, edges, and connection handles
 - **API Integration**: Direct integration with Google Gemini API for intelligent infrastructure generation
 
-## 📁 Project Structure
+## � Product Snapshot
+
+### Main Application Interface
+![Azure Infrastructure Designer - Main Interface](./assets/001_NLArch_Sample.png)
+*The main designer interface showing the drag-and-drop canvas with Azure service components, natural language input, and real-time infrastructure visualization.*
+
+### API Configuration
+![Azure Infrastructure Designer - API Configuration](./assets/002_NLArch_APIConfig.png)
+*API configuration modal for setting up Google Gemini AI integration to enable intelligent infrastructure generation from natural language prompts.*
+
+## �📁 Project Structure
 
 ```
 azure-infrastructure-designer/

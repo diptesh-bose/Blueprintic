@@ -3,6 +3,7 @@ import App from './App'
 import './App.css'
 import './styles/tailwind.css'
 import 'reactflow/dist/style.css'
+import '@reactflow/node-resizer/dist/style.css'
 
 console.log('🚀 Main.tsx loaded - attempting to render React app...')
 

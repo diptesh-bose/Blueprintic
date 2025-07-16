@@ -24,6 +24,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import AzureServiceNode from './EnhancedAzureServiceNode';
+import AzureGroupNode from './AzureGroupNode';
 import CustomEdge from './CustomEdge';
 import { useGenAI } from '../contexts/EnhancedGenAIContext';
 import ManualUpdateButton from './ManualUpdateButton';
@@ -32,6 +33,7 @@ import { useDnD } from '../contexts/DnDContext';
 // Define custom node types
 const nodeTypes: NodeTypes = {
   azureService: AzureServiceNode,
+  azureGroup: AzureGroupNode,
 };
 
 // Define custom edge types
@@ -56,15 +58,15 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [type, setType] = useDnD();
+  const [type] = useDnD();
 
   // Debug current state
   useEffect(() => {
     console.log('📊 Current nodes in state:', nodes.length, nodes);
   }, [nodes]);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string | null } | null>(null);
+  const [, setSelectedNode] = useState<Node | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; nodeId: string | null; edgeId?: string } | null>(null);
   const [isDraggedOver, setIsDraggedOver] = useState(false);
   
   // Connection mode state
@@ -98,6 +100,104 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
       setEdges(generatedEdges);
     }
   }, [generatedNodes, generatedEdges, setNodes, setEdges, reactFlowInstance]);
+
+  // Handle node reparenting when dropped on groups
+  useEffect(() => {
+    const handleNodeDroppedOnGroup = (event: CustomEvent) => {
+      const { groupId, dropEvent } = event.detail;
+      console.log('🎯 Node dropped on group:', groupId);
+      
+      // Get the dragged service data
+      let serviceDataStr = '';
+      if (dropEvent.dataTransfer.types.includes('application/azure-service')) {
+        serviceDataStr = dropEvent.dataTransfer.getData('application/azure-service');
+      } else if (dropEvent.dataTransfer.types.includes('application/json')) {
+        serviceDataStr = dropEvent.dataTransfer.getData('application/json');
+      }
+      
+      if (!serviceDataStr) {
+        console.log('❌ No service data in drop event');
+        return;
+      }
+      
+      try {
+        const serviceData = JSON.parse(serviceDataStr);
+        console.log('✅ Parsed service data for grouping:', serviceData);
+        
+        // Get the group node position
+        const groupNode = nodes.find(node => node.id === groupId);
+        if (!groupNode) {
+          console.log('❌ Group node not found');
+          return;
+        }
+        
+        // Calculate position relative to group (with some offset)
+        const relativePosition = {
+          x: 20 + Math.random() * 200, // Some randomness to avoid overlap
+          y: 60 + Math.random() * 100
+        };
+        
+        // Create new child node
+        const newChildNode = {
+          id: getId(),
+          type: 'azureService',
+          position: relativePosition,
+          parentId: groupId, // This makes it a child of the group
+          extent: 'parent' as const, // Keeps it within the parent bounds
+          data: {
+            label: serviceData.name,
+            name: serviceData.name,
+            category: serviceData.category,
+            description: serviceData.description,
+            color: serviceData.color,
+            icon: serviceData.icon,
+            properties: serviceData.properties,
+            type: serviceData.type
+          },
+          style: {
+            width: 160,
+            height: 100
+          }
+        };
+        
+        console.log('🎯 Creating child node:', newChildNode);
+        setNodes((nds) => [...nds, newChildNode]);
+        
+      } catch (error) {
+        console.error('❌ Failed to parse service data:', error);
+      }
+    };
+    
+    // Add event listener
+    window.addEventListener('nodeDroppedOnGroup', handleNodeDroppedOnGroup as EventListener);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('nodeDroppedOnGroup', handleNodeDroppedOnGroup as EventListener);
+    };
+  }, [nodes, setNodes]);
+
+  // Handle node data updates (like name changes)
+  useEffect(() => {
+    const handleNodeDataUpdate = (event: CustomEvent) => {
+      const { nodeId, data } = event.detail;
+      console.log('📝 Updating node data:', nodeId, data);
+      
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === nodeId ? { ...node, data } : node
+        )
+      );
+    };
+    
+    // Add event listener
+    window.addEventListener('updateNodeData', handleNodeDataUpdate as EventListener);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('updateNodeData', handleNodeDataUpdate as EventListener);
+    };
+  }, [setNodes]);
 
   // Handle connections between nodes
   const onConnect = useCallback(
@@ -178,49 +278,57 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
   // Handle drop for new node creation - using official React Flow pattern
   const onDrop = useCallback(
     (event: React.DragEvent) => {
-      console.log('📍 DROP EVENT TRIGGERED');
-      console.log('📍 DROP - Event:', event);
-      console.log('📍 DROP - DataTransfer:', event.dataTransfer);
+      console.log('📍 CANVAS DROP EVENT TRIGGERED');
+      console.log('📍 CANVAS DROP - Event target:', event.target);
+      console.log('📍 CANVAS DROP - Current target:', event.currentTarget);
+      console.log('📍 CANVAS DROP - DataTransfer:', event.dataTransfer);
       
       event.preventDefault();
       setIsDraggedOver(false); // Reset drag state
-      console.log('✅ DROP - preventDefault called');
+      console.log('✅ CANVAS DROP - preventDefault called');
 
       // Check if the dropped element is valid using DnD context
-      console.log('🔍 DROP - Type from context:', type);
+      console.log('🔍 CANVAS DROP - Type from context:', type);
       if (!type) {
-        console.log('❌ DROP - No type set in DnD context');
+        console.log('❌ CANVAS DROP - No type set in DnD context');
         return;
       }
 
-      // Try to get service data from multiple data types as per MDN
-      console.log('📦 DROP - Available data types:', event.dataTransfer.types);
+      // Try to get data from multiple data types as per MDN
+      console.log('📦 CANVAS DROP - Available data types:', event.dataTransfer.types);
       
-      let serviceDataStr = '';
+      let dataStr = '';
+      let dataType = '';
       
-      // Try different data types in order of preference
-      if (event.dataTransfer.types.includes('application/azure-service')) {
-        serviceDataStr = event.dataTransfer.getData('application/azure-service');
-        console.log('📦 DROP - Got data from application/azure-service:', serviceDataStr);
+      // Check for group data first
+      if (event.dataTransfer.types.includes('application/azure-group')) {
+        dataStr = event.dataTransfer.getData('application/azure-group');
+        dataType = 'group';
+        console.log('📦 DROP - Got group data:', dataStr);
+      } else if (event.dataTransfer.types.includes('application/azure-service')) {
+        dataStr = event.dataTransfer.getData('application/azure-service');
+        dataType = 'service';
+        console.log('📦 DROP - Got service data:', dataStr);
       } else if (event.dataTransfer.types.includes('application/json')) {
-        serviceDataStr = event.dataTransfer.getData('application/json');
-        console.log('📦 DROP - Got data from application/json:', serviceDataStr);
+        dataStr = event.dataTransfer.getData('application/json');
+        dataType = type === 'azureGroup' ? 'group' : 'service';
+        console.log('📦 DROP - Got JSON data:', dataStr);
       } else {
         console.log('❌ DROP - No valid data type found in:', event.dataTransfer.types);
         return;
       }
 
-      if (!serviceDataStr) {
-        console.log('❌ DROP - No service data string');
+      if (!dataStr) {
+        console.log('❌ DROP - No data string');
         return;
       }
 
-      let serviceData;
+      let data;
       try {
-        serviceData = JSON.parse(serviceDataStr);
-        console.log('✅ DROP - Parsed service data:', serviceData);
+        data = JSON.parse(dataStr);
+        console.log('✅ DROP - Parsed data:', data);
       } catch (error) {
-        console.error('❌ DROP - Failed to parse service data:', error);
+        console.error('❌ DROP - Failed to parse data:', error);
         return;
       }
 
@@ -234,29 +342,66 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
         return;
       }
 
-      // Calculate position relative to the React Flow canvas
-      const position = {
+      // Calculate position relative to the React Flow canvas with proper viewport transformation
+      let position = {
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
       };
 
+      // Use React Flow's project function for proper coordinate transformation if available
+      if (reactFlowInstance && reactFlowInstance.project) {
+        position = reactFlowInstance.project(position);
+      }
+
       console.log('📍 DROP - Calculated position:', position);
 
-      // Create a new node
-      const newNode = {
+      // Find parent group if dropping on one
+      const intersectingNodes = reactFlowInstance?.getIntersectingNodes({
+        x: position.x,
+        y: position.y,
+        width: 1,
+        height: 1,
+      });
+      
+      const parentNode = intersectingNodes?.find((node: any) => node.type === 'azureGroup');
+
+      // Create a new node based on type
+      const newNode = dataType === 'group' ? {
+        id: getId(),
+        type: 'azureGroup', // Use our custom AzureGroupNode component
+        position,
+        data: {
+          label: data.name,
+          name: data.name,
+          groupType: data.groupType || 'resource-group' as const,
+          description: data.description,
+          color: data.color
+        },
+        style: {
+          width: 400,
+          height: 300,
+        }
+      } : {
         id: getId(),
         type: 'azureService',
-        position,
+        position: parentNode ? {
+          x: position.x - parentNode.position.x,
+          y: position.y - parentNode.position.y,
+        } : position,
         data: { 
-          label: serviceData.name,
-          name: serviceData.name,
-          category: serviceData.category,
-          description: serviceData.description,
-          color: serviceData.color,
-          icon: serviceData.icon,
-          properties: serviceData.properties,
-          type: serviceData.type
+          label: data.name,
+          name: data.name,
+          category: data.category,
+          description: data.description,
+          color: data.color,
+          icon: data.icon,
+          properties: data.properties,
+          type: data.type
         },
+        ...(parentNode && {
+          parentId: parentNode.id,
+          extent: 'parent' as const,
+        }),
       };
 
       console.log('✅ DROP - Creating new node:', newNode);
@@ -270,32 +415,6 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
     [type, setNodes]
   );
 
-  // Manual test function to verify node creation works
-  const addTestNode = useCallback(() => {
-    console.log('🧪 MANUAL TEST - Adding node manually');
-    const testNode = {
-      id: getId(),
-      type: 'azureService',
-      position: { x: 100, y: 100 },
-      data: {
-        label: 'Test Service',
-        name: 'Test Service',
-        category: 'compute',
-        description: 'Manual test node',
-        color: '#0078D4',
-        icon: 'Server',
-        properties: { test: 'manual' },
-        type: 'test'
-      },
-    };
-    
-    console.log('🧪 MANUAL TEST - Creating node:', testNode);
-    setNodes((nds) => {
-      const newNodes = nds.concat(testNode);
-      console.log('🧪 MANUAL TEST - Updated nodes:', newNodes);
-      return newNodes;
-    });
-  }, [setNodes]);
   const toggleManualConnectionMode = useCallback(() => {
     setIsManualConnectionMode(!isManualConnectionMode);
   }, [isManualConnectionMode]);
@@ -349,25 +468,6 @@ const AzureFlowCanvas = ({ onNodeSelect, onExportGenerated }: AzureFlowCanvasPro
       setEdges(edges.filter(edge => edge.id !== edgeId));
     },
     [edges, setEdges]
-  );
-
-  // Edit node properties
-  const editNode = useCallback(
-    (nodeId: string, newData: any) => {
-      setNodes(nodes.map(node => {
-        if (node.id === nodeId) {
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              ...newData
-            }
-          };
-        }
-        return node;
-      }));
-    },
-    [nodes, setNodes]
   );
 
   // Handle edge right-click for context menu
@@ -791,15 +891,8 @@ resource ${data.label.toLowerCase().replace(/\s+/g, '')}${node.id.split('_')[1]}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
     >
-      {/* Manual Test Button */}
+      {/* Core functionality buttons only */}
       <div className="absolute top-4 left-4 z-50 flex gap-2">
-        <button
-          onClick={addTestNode}
-          className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
-        >
-          ➕ Add Test Node
-        </button>
-        
         {/* Manual Infrastructure Code Update Button */}
         <ManualUpdateButton nodes={nodes} edges={edges} />
       </div>

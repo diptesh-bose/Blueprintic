@@ -4,11 +4,6 @@ import AzureFlowCanvas from '../components/AzureFlowCanvas';
 import EnhancedAzureComponentSidebar from '../components/EnhancedAzureComponentSidebar';
 import EnhancedPromptInput from '../components/EnhancedPromptInput';
 import EnhancedTemplateOutputPanel from '../components/EnhancedTemplateOutputPanel';
-import DebugPanel from '../components/DebugPanel';
-import DnDDebugger from '../components/DnDDebugger';
-import SimpleTestDrag from '../components/SimpleTestDrag';
-import MinimalDragTest from '../components/MinimalDragTest';
-import GlobalDragDebugger from '../components/GlobalDragDebugger';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { DnDProvider } from '../contexts/DnDContext';
 import { Node } from 'reactflow';
@@ -107,21 +102,6 @@ const EnhancedDesignerPage: React.FC = () => {
               </div>
             </div>
           </footer>
-          
-          {/* Global drag event debugging */}
-          <GlobalDragDebugger />
-          
-          {/* Debug Panel */}
-          <DebugPanel />
-          
-          {/* DnD Debug Panel */}
-          <DnDDebugger />
-          
-          {/* Simple Test Drag */}
-          <SimpleTestDrag />
-          
-          {/* Minimal Drag Test */}
-          <MinimalDragTest />
         </div>
       </DnDProvider>
     </ReactFlowProvider>

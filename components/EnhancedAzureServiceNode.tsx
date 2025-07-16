@@ -1,5 +1,6 @@
 import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
+import { NodeResizer } from '@reactflow/node-resizer';
 import { Server } from 'lucide-react';
 
 interface AzureServiceNodeData {
@@ -37,9 +38,29 @@ const AzureServiceNode: React.FC<NodeProps<AzureServiceNodeData>> = ({ data, sel
         borderColor,
         backgroundColor,
         minWidth: '180px',
-        minHeight: '120px'
+        minHeight: '120px',
+        width: '100%',
+        height: '100%'
       }}
     >
+      {/* Add NodeResizer for Azure service nodes */}
+      <NodeResizer 
+        isVisible={selected}
+        minWidth={180}
+        minHeight={120}
+        lineStyle={{
+          borderColor: '#0078d4',
+          borderWidth: 2,
+        }}
+        handleStyle={{
+          backgroundColor: '#0078d4',
+          border: '2px solid white',
+          borderRadius: '50%',
+          width: 12,
+          height: 12,
+        }}
+      />
+      
       <Handle
         type="target"
         position={Position.Top}

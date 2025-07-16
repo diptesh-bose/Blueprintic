@@ -1,6 +1,32 @@
+@import './xy-theme.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Azure Group Node specific styles */
+.azure-group-node {
+  border: 2px dashed #0078d4;
+  background: rgba(0, 120, 212, 0.05);
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+  min-height: 150px;
+}
+
+.azure-group-node.resource-group {
+  border-color: #0078d4;
+  background: rgba(0, 120, 212, 0.05);
+}
+
+.azure-group-node.subnet {
+  border-color: #107c10;
+  background: rgba(16, 124, 16, 0.05);
+}
+
+.azure-group-node.tier {
+  border-color: #d83b01;
+  background: rgba(216, 59, 1, 0.05);
+}
 
 /* Base styles */
 @layer base {
@@ -121,6 +147,46 @@
 
 .react-flow__controls-button:hover {
   background-color: #f3f4f6;
+}
+
+/* Custom resize control styles for better visibility */
+.react-flow__resize-control {
+  background-color: #ffffff !important;
+  border: 2px solid #0078d4 !important;
+  border-radius: 3px !important;
+  width: 12px !important;
+  height: 12px !important;
+  opacity: 1 !important;
+}
+
+.react-flow__resize-control:hover {
+  background-color: #0078d4 !important;
+  transform: scale(1.2);
+}
+
+.react-flow__resize-control-line {
+  border-color: #0078d4 !important;
+  border-width: 2px !important;
+  border-style: dashed !important;
+}
+
+/* Make the node resizer more visible when selected */
+.react-flow__node.selected .react-flow__resize-control {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.react-flow__node.selected .react-flow__resize-control-line {
+  opacity: 0.8 !important;
+  visibility: visible !important;
+}
+
+/* Ensure all node types can be resized when selected */
+.react-flow__node[data-type="azureService"].selected .react-flow__resize-control,
+.react-flow__node[data-type="azureGroup"].selected .react-flow__resize-control {
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: block !important;
 }
 
 /* Custom panel styles */

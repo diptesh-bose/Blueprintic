@@ -2,10 +2,22 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface InfrastructureRequirement {
   description: string;
+  groups?: AzureGroup[];
   services: AzureService[];
   connections: ServiceConnection[];
   resourceGroup?: string;
   region?: string;
+}
+
+export interface AzureGroup {
+  id: string;
+  name: string;
+  type: 'azureGroup';
+  groupType: 'resource-group' | 'virtual-network' | 'availability-set' | 'app-service-plan';
+  category: 'grouping';
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  properties: Record<string, any>;
 }
 
 export interface AzureService {
@@ -13,8 +25,11 @@ export interface AzureService {
   name: string;
   type: string;
   category: 'compute' | 'database' | 'storage' | 'networking' | 'security' | 'ai' | 'integration' | 'analytics';
+  parentId?: string;
+  extent?: 'parent';
   properties: Record<string, any>;
   position: { x: number; y: number };
+  size?: { width: number; height: number };
   dependencies?: string[];
 }
 
@@ -65,25 +80,50 @@ class GeminiService {
     }
 
     const prompt = `
-    You are an Azure infrastructure architect AI. Parse the following natural language description and convert it to a structured Azure infrastructure design.
+    You are an Azure infrastructure architect AI. Parse the following natural language description and convert it to a structured Azure infrastructure design with intelligent grouping and containerization.
 
     Description: "${description}"
+
+    IMPORTANT INSTRUCTIONS FOR CONTAINERS AND GROUPING:
+    1. When resource groups, containers, or grouping is mentioned, create azureGroup nodes to represent them
+    2. Place related services inside appropriate containers by setting parentId and extent properties
+    3. Recognize grouping patterns: "resource group with X and Y", "container with services", "group containing", etc.
+    4. Default containers: Create logical groupings even if not explicitly mentioned (e.g., web tier, data tier)
+    5. Container types: "resource-group", "virtual-network", "availability-set", "app-service-plan"
 
     Please analyze this and return a JSON response with the following structure:
     {
       "description": "cleaned up description",
+      "groups": [
+        {
+          "id": "unique_group_id",
+          "name": "Group Name",
+          "type": "azureGroup",
+          "groupType": "resource-group|virtual-network|availability-set|app-service-plan",
+          "category": "grouping",
+          "position": { "x": 100, "y": 100 },
+          "size": { "width": 400, "height": 300 },
+          "properties": {
+            "description": "Container description",
+            "region": "East US"
+          }
+        }
+      ],
       "services": [
         {
           "id": "unique_id",
           "name": "Service Name",
           "type": "Azure.Service.Type",
           "category": "compute|database|storage|networking|security|ai|integration|analytics",
+          "parentId": "group_id_if_belongs_to_container",
+          "extent": "parent",
           "properties": {
             "tier": "Standard|Premium|Basic",
             "size": "S1|M1|L1",
             "region": "East US"
           },
-          "position": { "x": 100, "y": 100 }
+          "position": { "x": 50, "y": 80 },
+          "size": { "width": 160, "height": 100 }
         }
       ],
       "connections": [
@@ -98,6 +138,18 @@ class GeminiService {
       "region": "East US"
     }
 
+    GROUPING EXAMPLES:
+    - "resource group with 2 VMs and SQL" → Create resource-group container with VMs and SQL inside
+    - "web tier and database tier" → Create separate containers for each tier
+    - "VNet with subnets" → Create virtual-network container with services inside
+    - "availability set with VMs" → Create availability-set container with VMs inside
+
+    POSITIONING RULES:
+    - Containers: Position logically with adequate spacing (400px apart)
+    - Services in containers: Position relative to container (x: 20-200, y: 60-200)
+    - Services outside containers: Position with 250px spacing
+    - Ensure no overlapping and logical flow
+
     Common Azure services to consider:
     - Compute: App Service, Virtual Machines, AKS, Container Apps, Functions
     - Database: Azure SQL, Cosmos DB, PostgreSQL, MySQL, Redis Cache
@@ -105,8 +157,9 @@ class GeminiService {
     - Networking: Virtual Network, Load Balancer, Application Gateway
     - Security: Key Vault, Azure AD B2C
     - AI/ML: Azure OpenAI, Cognitive Services
+    - Containers: Resource Groups, Virtual Networks, Availability Sets, App Service Plans
 
-    Position nodes logically with 250px spacing. Return only valid JSON.
+    Return only valid JSON with proper grouping and parent-child relationships.
     `;
 
     try {
@@ -153,18 +206,57 @@ class GeminiService {
     }
 
     try {
+      // Prepare infrastructure data including groups for code generation
+      const infrastructureData = {
+        groups: infrastructure.groups || [],
+        services: infrastructure.services,
+        connections: infrastructure.connections,
+        resourceGroup: infrastructure.resourceGroup,
+        region: infrastructure.region
+      };
+
       // Generate ARM template
-      const armPrompt = `Generate a complete ARM template for: ${JSON.stringify(infrastructure.services, null, 2)}. Return only the JSON template.`;
+      const armPrompt = `Generate a complete ARM template for Azure infrastructure including resource groups and services. 
+      
+      Infrastructure: ${JSON.stringify(infrastructureData, null, 2)}
+      
+      Include:
+      - Resource groups as containers
+      - Proper dependencies between resources
+      - Parameters for environment-specific values
+      - Outputs for key resource IDs
+      
+      Return only the JSON template.`;
       const armResult = await this.model.generateContent(armPrompt);
       const armResponse = await armResult.response;
       
       // Generate Terraform code
-      const terraformPrompt = `Generate Terraform HCL code for: ${JSON.stringify(infrastructure.services, null, 2)}. Return only the HCL code.`;
+      const terraformPrompt = `Generate Terraform HCL code for Azure infrastructure including resource groups and services.
+      
+      Infrastructure: ${JSON.stringify(infrastructureData, null, 2)}
+      
+      Include:
+      - Resource group definitions
+      - Service resources with proper dependencies
+      - Variables for configuration
+      - Outputs for important resource information
+      
+      Return only the HCL code.`;
       const terraformResult = await this.model.generateContent(terraformPrompt);
       const terraformResponse = await terraformResult.response;
       
       // Generate YAML pipeline
-      const yamlPrompt = `Generate Azure DevOps YAML pipeline for deploying: ${JSON.stringify(infrastructure.services, null, 2)}. Return only the YAML.`;
+      const yamlPrompt = `Generate Azure DevOps YAML pipeline for deploying Azure infrastructure with resource groups.
+      
+      Infrastructure: ${JSON.stringify(infrastructureData, null, 2)}
+      
+      Include:
+      - Resource group creation
+      - Service deployment steps
+      - Proper stage dependencies
+      - Environment variables
+      
+      Return only the YAML.`;
       const yamlResult = await this.model.generateContent(yamlPrompt);
       const yamlResponse = await yamlResult.response;
 
