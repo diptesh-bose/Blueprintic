@@ -1,4 +1,16 @@
-# Azure Infrastructure Designer
+# Azure Infras## 📸 Product Snapshot
+
+### Main Application Interface
+![Azure Infrastructure Designer - Main Interface](./assets/001_NLArch_Sample.png)
+*The main designer interface showing the drag-and-drop canvas with Azure service components, natural language input, and real-time infrastructure visualization.*
+
+### API Configuration
+![Azure Infrastructure Designer - API Configuration](./assets/002_NLArch_APIConfig.png)
+*API configuration modal for setting up Google Gemini AI integration to enable intelligent infrastructure generation from natural language prompts.*
+
+### Interactive Demo
+![Azure Infrastructure Designer - Interactive Demo](./assets/chrome_bxsChHh2k2.gif)
+*Live demonstration of the drag-and-drop functionality, AI-powered infrastructure generation, and real-time canvas interactions in action.*Designer
 
 A GenAI-powered web application that enables users to architect, design, and implement Azure infrastructure services through a drag-and-drop interface. The application processes natural language prompts to generate infrastructure blueprints, which users can then customize and export as deployment templates.
 
